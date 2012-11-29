@@ -21,6 +21,11 @@ catch err
     console.log 'WARNING: the which module is required for windows\ntry: npm install which'
   which = null
 
+try
+  glob = require 'glob'  
+catch err
+  console.log 'WARNING: the glob module is required\ntry: npm install glob'
+
 # ANSI Terminal Colors
 bold = '\x1b[0;1m'
 green = '\x1b[0;32m'
@@ -84,39 +89,10 @@ task 'test', 'run tests', -> build -> mocha -> log ":)", green
 # ```
 task 'clean', 'clean generated files', -> clean -> log ";)", green
 
+task 'lint', 'clean generated files', -> lint -> log ";)", green
+
 
 # Internal Functions
-#
-# ## *walk* 
-#
-# **given** string as dir which represents a directory in relation to local directory
-# **and** callback as done in the form of (err, results)
-# **then** recurse through directory returning an array of files
-#
-# Examples
-#
-# ``` coffeescript
-# walk 'src', (err, results) -> console.log results
-# ```
-walk = (dir, done) ->
-  results = []
-  fs.readdir dir, (err, list) ->
-    return done(err, []) if err
-    pending = list.length
-    return done(null, results) unless pending
-    for name in list
-      file = "#{dir}/#{name}"
-      try
-        stat = fs.statSync file
-      catch err
-        stat = null
-      if stat?.isDirectory()
-        walk file, (err, res) ->
-          results.push name for name in res
-          done(null, results) unless --pending
-      else
-        results.push file
-        done(null, results) unless --pending
 
 # ## *log* 
 # 
@@ -192,11 +168,16 @@ _clean = (dir, callback) ->
   try
     for file in dir
       unless unlinkIfCoffeeFile file
-        walk file, (err, results) ->
+        glob "#{file}/**/*.coffee", (err, results) ->
           for f in results
             unlinkIfCoffeeFile f
     callback?()
   catch err
+
+_lint = (dir, callback)->
+  if moduleExists('coffeelint')
+    options = ['-r', '-f', 'coffeelint.json', dir] 
+    launch 'coffeelint', options, callback
 
 
 # ## *moduleExists*
@@ -210,7 +191,7 @@ moduleExists = (name) ->
   try 
     require name 
   catch err 
-    log "nodejs module '#{name}' are required", red
+    log "nodejs module '#{name}' is required", red
     log "try: npm install #{name}", green
     false
 
@@ -238,7 +219,7 @@ mocha = (options, callback) ->
 # **then** invoke launch passing docco command
 _docco = (dir, callback) ->
   if moduleExists('docco')
-    walk dir, (err, files) -> launch 'docco', files, callback
+    glob "#{file}/**/*.coffee", (err, files) -> launch 'docco', files, callback
 
 
 build = (watch, callback)->
@@ -249,5 +230,8 @@ clean = (callback)->
 
 docco = (callback)->
   _docco lib_dir, callback
+
+lint = (callback)->
+  _lint(lib_dir, callback)
 
 
