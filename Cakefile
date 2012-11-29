@@ -158,8 +158,14 @@ _build = (dir, watch, callback) ->
   options.unshift '-w' if watch
   launch 'coffee', options, callback
 
-build = (watch, callback)->
-  _build lib_dir, watch, callback
+
+_browserify = (in_file, out_file, watch, callback)->
+  if typeof watch is 'function'
+    callback = watch
+    watch = false
+  options = ['-o', out_file, in_file] 
+  options.unshift '-w' if watch
+  launch 'browserify', options, callback
 
 
 # ## *unlinkIfCoffeeFile*
@@ -173,6 +179,7 @@ unlinkIfCoffeeFile = (file) ->
     fs.unlink file.replace(/\.coffee$/, '.js')
     true
   else false
+
 
 # ## *_clean*
 #
@@ -191,8 +198,6 @@ _clean = (dir, callback) ->
     callback?()
   catch err
 
-clean = (callback)->
-  _clean(lib_dir ,callback)
 
 # ## *moduleExists*
 #
@@ -235,6 +240,14 @@ _docco = (dir, callback) ->
   if moduleExists('docco')
     walk dir, (err, files) -> launch 'docco', files, callback
 
+
+build = (watch, callback)->
+  _build lib_dir, watch, callback
+
+clean = (callback)->
+  _clean lib_dir, callback
+
 docco = (callback)->
   _docco lib_dir, callback
+
 
