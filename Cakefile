@@ -7,10 +7,8 @@
 # * test  - runs mocha test framework, you can edit this task to use your favorite test framework
 # * docs  - generates annotated documentation using docco
 # * clean - clean generated .js files
-files = [
-  'lib'
-  'src'
-]
+
+lib_dir = 'lib'
 
 fs = require 'fs'
 {print} = require 'util'
@@ -127,7 +125,7 @@ walk = (dir, done) ->
 # **and** optional string as an explanation
 # **then** builds a statement and logs to console.
 # 
-log = (message, color, explanation) -> console.log color + message + reset + ' ' + (explanation or '')
+log = (message, color=reset, explanation) -> console.log color + message + reset + ' ' + (explanation or '')
 
 # ## *launch*
 #
@@ -144,21 +142,25 @@ launch = (cmd, options=[], callback) ->
   app.stderr.pipe(process.stderr)
   app.on 'exit', (status) -> callback?() if status is 0
 
-# ## *build*
+# ## *_build*
 #
-# **given** optional boolean as watch
+# **given** directory
+# **and** optional boolean as watch
 # **and** optional function as callback
 # **then** invoke launch passing coffee command
 # **and** defaulted options to compile src to lib
-build = (watch, callback) ->
+_build = (dir, watch, callback) ->
   if typeof watch is 'function'
     callback = watch
     watch = false
 
-  options = ['-c', '-b', '-o' ]
-  options = options.concat files
+  options = ['-c', '-b', dir]
   options.unshift '-w' if watch
   launch 'coffee', options, callback
+
+build = (watch, callback)->
+  _build lib_dir, watch, callback
+
 
 # ## *unlinkIfCoffeeFile*
 #
@@ -172,21 +174,25 @@ unlinkIfCoffeeFile = (file) ->
     true
   else false
 
-# ## *clean*
+# ## *_clean*
 #
-# **given** optional function as callback
+# **given** directory to clean generated files 
+# **and** optional function as callback
 # **then** loop through files variable
 # **and** call unlinkIfCoffeeFile on each
-clean = (callback) ->
+_clean = (dir, callback) ->
+  dir = [dir] unless dir instanceof Array
   try
-    for file in files
+    for file in dir
       unless unlinkIfCoffeeFile file
         walk file, (err, results) ->
           for f in results
             unlinkIfCoffeeFile f
-
     callback?()
   catch err
+
+clean = (callback)->
+  _clean(lib_dir ,callback)
 
 # ## *moduleExists*
 #
@@ -199,7 +205,8 @@ moduleExists = (name) ->
   try 
     require name 
   catch err 
-    log "#{name} required: npm install #{name}", red
+    log "nodejs module '#{name}' are required", red
+    log "try: npm install #{name}", green
     false
 
 
@@ -209,21 +216,25 @@ moduleExists = (name) ->
 # **and** optional function as callback
 # **then** invoke launch passing mocha command
 mocha = (options, callback) ->
-  #if moduleExists('mocha')
-  if typeof options is 'function'
-    callback = options
-    options = []
-  # add coffee directive
-  options.push '--compilers'
-  options.push 'coffee:coffee-script'
-  
-  launch 'mocha', options, callback
+  if moduleExists('mocha')
+    if typeof options is 'function'
+      callback = options
+      options = []
+    # add coffee directive
+    options.push '--compilers'
+    options.push 'coffee:coffee-script'
+    
+    launch 'mocha', options, callback
 
-# ## *docco*
+# ## *_docco*
 #
-# **given** optional function as callback
+# **given** source directory
+# **and** optional function as callback
 # **then** invoke launch passing docco command
-docco = (callback) ->
-  #if moduleExists('docco')
-  walk 'src', (err, files) -> launch 'docco', files, callback
+_docco = (dir, callback) ->
+  if moduleExists('docco')
+    walk dir, (err, files) -> launch 'docco', files, callback
+
+docco = (callback)->
+  _docco lib_dir, callback
 
