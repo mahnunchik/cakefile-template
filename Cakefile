@@ -89,6 +89,15 @@ task 'test', 'run tests', -> build -> mocha -> log ":)", green
 # ```
 task 'clean', 'clean generated files', -> clean -> log ";)", green
 
+# ## *lint*
+#
+# Lint coffee files
+#
+# <small>Usage</small>
+#
+# ```
+# cake lint
+# ```
 task 'lint', 'clean generated files', -> lint -> log ";)", green
 
 
